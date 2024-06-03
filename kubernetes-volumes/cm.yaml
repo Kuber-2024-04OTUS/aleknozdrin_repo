@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: random-values-cm
+  namespace: homework
+data:
+  foo: bar
+  course: otus-kubernetes 
