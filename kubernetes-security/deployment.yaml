@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homework-deployment
+  namespace: homework
+  labels:
+    app: todo
+spec:
+  replicas: 3 
+  selector:
+    matchLabels:
+      app: homework-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: homework-server
+    spec:
+      serviceAccountName: monitoring
+      nodeSelector:
+        dz: dz2
+      containers:
+      - name: dir-server
+        image: nginx:1.25.5
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8000
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", 'curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://kubernetes.default.svc/metrics > /homework/metrics.html']
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm /homework/index.html"]
+        volumeMounts:
+        - name: shared-data
+          mountPath: /homework
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: random-values
+          mountPath: /homework/conf
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      initContainers:
+      - name: init-index-downloader
+        image: busybox:1.36.1
+        command: ['sh', '-c', 'wget -O /init/index.html https://link.hr-link.ru/']
+        volumeMounts:
+        - mountPath: /init
+          name: shared-data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: myclaim
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
+      - name: random-values
+        configMap:
+          name: random-values-cm
