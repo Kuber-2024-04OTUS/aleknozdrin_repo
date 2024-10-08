@@ -1,0 +1,29 @@
+kubectl label nodes minikube dz=dz2
+
+kubectl apply -f namespace.yaml
+kubectl apply -f sa.yaml
+kubectl apply -f roles.yaml
+kubectl apply -f role-bindings.yaml
+kubectl apply -f cluster-role-bindings.yaml
+kubectl apply -f nginx-config.yaml
+kubectl apply -f cm.yaml
+kubectl apply -f storageClass.yaml
+kubectl apply -f pvc.yaml
+kubectl apply -f service.yaml
+kubectl apply -f deployment.yaml
+kubectl apply -f ingress.yaml
+
+
+export KUBECONFIG=./config-homework.yaml 
+
+
+
+unset KUBECONFIG
+kubectl delete ns homework
+kubectl delete clusterrole metrics-reader
+kubectl delete clusterrolebinding get-metrics
+kubectl delete sc homework-sc
+ 
+----
+helm dependency update ./homework-chart/
+helm install pesky-pixy ./homework-chart/

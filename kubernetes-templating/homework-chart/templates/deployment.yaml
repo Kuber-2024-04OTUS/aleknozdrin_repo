@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.deployment.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: todo
+spec:
+  replicas: {{ .Values.app.replicas }} 
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+    spec:
+      serviceAccountName: {{ .Values.app.sa.monitoring_name }}
+      nodeSelector:
+        dz: dz2
+      containers:
+      - name: {{ .Values.app.deployment.server_container_name }}
+        image: {{ .Values.app.deployment.nginx_image.repository }}:{{ .Values.app.deployment.nginx_image.tag }}
+        resources: 
+          {{- with .Values.resources.server_container }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        ports:
+        - containerPort: {{ .Values.network.application_port }}
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", 'curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://kubernetes.default.svc/metrics > /homework/metrics.html']
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm /homework/index.html"]
+        volumeMounts:
+        - name: {{ .Values.app.volumes.shared_data_name }}
+          mountPath: /homework
+        - name: {{ .Values.app.volumes.nginx_config_name }}
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: {{ .Values.app.volumes.random_values_name }}
+          mountPath: /homework/conf
+        {{- if eq .Values.app.readiness_probe_on true }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.network.application_port }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        {{- end }}
+      initContainers:
+      - name: {{ .Values.app.deployment.init_container_name }}
+        image: {{ .Values.app.deployment.busybox_image.repository }}:{{ .Values.app.deployment.busybox_image.tag }}
+        command: ['sh', '-c', 'wget -O /init/index.html https://link.hr-link.ru/']
+        volumeMounts:
+        - mountPath: /init
+          name: {{ .Values.app.volumes.shared_data_name }}
+      volumes:
+      - name: {{ .Values.app.volumes.shared_data_name }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.app.pvc.name }}
+      - name: {{ .Values.app.volumes.nginx_config_name }}
+        configMap:
+          name: {{ .Values.app.cm.nginx_config_name }}
+      - name: {{ .Values.app.volumes.random_values_name }}
+        configMap:
+          name: {{ .Values.app.cm.random_values_name }}

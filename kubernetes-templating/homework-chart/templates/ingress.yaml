@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: {{ .Values.network.homepage_ingress.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /index.html
+spec:
+  rules:
+    - host: {{ .Values.network.host }}
+      http:
+        paths:
+          - path: /homepage
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.app.services.name }}
+                port:
+                  number: {{ .Values.network.external_port }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: {{ .Values.network.main_ingress.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  rules:
+    - host: {{ .Values.network.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.app.services.name }}
+                port:
+                  number: {{ .Values.network.external_port }}

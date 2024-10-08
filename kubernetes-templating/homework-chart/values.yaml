@@ -1,0 +1,55 @@
+namespace: homework
+
+app:
+  name: homework-server
+  sa:
+    monitoring_name: monitoring
+    admin_name: cd
+  roles:
+    metrics_reader_name: metrics-reader
+  rb:
+    admin_name: admin-service-account
+  crb:
+    metrics_reader_name: get-metrics
+  cm:
+    random_values_name: random-values-cm
+    nginx_config_name: nginx-config
+  sc:
+    name: homework-sc
+  pvc:
+    name: myclaim
+  services:
+    name: homework-service
+  replicas: 3
+  deployment:
+    name: homework-deployment
+    server_container_name: dir-server
+    init_container_name: init-index-downloader
+    nginx_image:
+      repository: nginx
+      tag: 1.25.5
+    busybox_image:
+      repository: busybox
+      tag: 1.36.1
+  volumes: 
+    shared_data_name: shared-data
+    nginx_config_name: nginx-config-volume
+    random_values_name: random-values
+  readiness_probe_on: true
+    
+resources:
+  server_container:
+    limits:
+      memory: "128Mi"
+      cpu: "500m"  
+  pvc_storage: 1Gi
+
+network:
+  external_port: 80
+  application_port: 8000
+  host: homework.otus
+  homepage_ingress:
+    name: homework-ingress
+  main_ingress:
+    name: conf-ingress
+    
